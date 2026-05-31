@@ -28,7 +28,7 @@ partnerskými univerzitami.
 Předpočítané embeddingy jsou součástí repozitáře ve složce `data/embeddings/`.
 Pokud je chcete přegenerovat, spusťte `python precompute_embeddings.py`.
 
-⚠️ Přegenerování OpenAI embeddingů vyžaduje platný API klíč a je zpoplatněno.
+Přegenerování OpenAI embeddingů vyžaduje platný API klíč a je zpoplatněno.
 
 **4. Spusťte aplikaci**
 
