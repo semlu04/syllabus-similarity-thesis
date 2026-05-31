@@ -15,17 +15,24 @@ partnerskými univerzitami.
 
 ## Spuštění aplikace
 
-1. Nainstalujte závislosti:
-pip install -r requirements.txt
+**1. Nainstalujte závislosti**
 
-2. Vytvořte soubor `.env` s OpenAI API klíčem:
-OPENAI_API_KEY=váš_klíč
+`pip install -r requirements.txt`
 
-3. Předpočítané embeddingy jsou součástí repozitáře ve složce `data/embeddings/`. Pokud je chcete přegenerovat, spusťte:
-python precompute_embeddings.py   Upozornění: přegenerování OpenAI embeddingů vyžaduje platný API klíč a je zpoplatněno.
+**2. Vytvořte soubor `.env` s OpenAI API klíčem**
 
-4. Spusťte aplikaci:
-streamlit run app/app.py
+`OPENAI_API_KEY=váš_klíč`
+
+**3. Embeddingy**
+
+Předpočítané embeddingy jsou součástí repozitáře ve složce `data/embeddings/`.
+Pokud je chcete přegenerovat, spusťte `python precompute_embeddings.py`.
+
+⚠️ Přegenerování OpenAI embeddingů vyžaduje platný API klíč a je zpoplatněno.
+
+**4. Spusťte aplikaci**
+
+`streamlit run app/app.py`
 
 ## Použité technologie
 
