@@ -22,11 +22,9 @@ pip install -r requirements.txt
 OPENAI_API_KEY=váš_klíč
 
 3. Předpočítané embeddingy jsou součástí repozitáře ve složce `data/embeddings/`. Pokud je chcete přegenerovat, spusťte:
-python precompute_embeddings.py
+python precompute_embeddings.py   Upozornění: přegenerování OpenAI embeddingů vyžaduje platný API klíč a je zpoplatněno.
 
-Upozornění: přegenerování OpenAI embeddingů vyžaduje platný API klíč a je zpoplatněno.
-
-5. Spusťte aplikaci:
+4. Spusťte aplikaci:
 streamlit run app/app.py
 
 ## Použité technologie
