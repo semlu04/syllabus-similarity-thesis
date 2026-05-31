@@ -74,6 +74,8 @@ def compute_scores(
             "university",
             "country",
             "source_url",
+            "ects_credits",
+            "study_level",
         ]
     ].copy()
 

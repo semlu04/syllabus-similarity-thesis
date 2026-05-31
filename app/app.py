@@ -29,6 +29,12 @@ ATTRIBUTE_LABELS_FULL = {
     "learning_outcomes": "Výsledky učení",
 }
 
+# mapování úrovní studia pro filtrování
+STUDY_LEVEL_MAP = {
+    "bachelor": ["bachelor", "undergraduate"],
+    "master": ["master", "postgraduate"],
+}
+
 
 # -------------------------------------------------------------------
 # Inicializace modelů a dat
@@ -100,10 +106,48 @@ st.set_page_config(
 
 st.title("Porovnání sylabů předmětů")
 
-st.caption(
-    "Vyhledávání zahraničních předmětů obsahově podobných "
-    "povinným předmětům na VŠE."
+st.markdown(
+    "Nástroj porovnává obsah sylabů předmětů z VŠE s předměty na partnerských "
+    "zahraničních univerzitách a vypočítává orientační skóre podobnosti (0–1). "
+    "Slouží k rychlejšímu vyhledání zahraničních předmětů, které by mohly být "
+    "obsahově uznatelné jako náhrada za povinný předmět na VŠE."
 )
+
+st.caption(
+    "Skóre vychází ze zaměření předmětu, obsahu a výsledků učení, tedy kritérií, "
+    "která garanti reálně zohledňují. "
+    "Výsledné skóre je pouze orientační podklad a nerozhoduje o uznání předmětu."
+)
+
+with st.expander("O nástroji"):
+    st.markdown(
+        "**Proč tento nástroj vznikl?**\n\n"
+        "Při plánování zahraničního studijního pobytu mohou studenti usilovat "
+        "o uznání zahraničního předmětu jako náhrady za povinný předmět na VŠE. "
+        "V takovém případě je nutné posoudit, zda obsah zahraničního předmětu "
+        "odpovídá obsahu předmětu vyučovaného na VŠE. Tento nástroj slouží jako "
+        "podpůrný prostředek, který automatizovaně porovnává sylaby předmětů "
+        "a pomáhá identifikovat zahraniční předměty s podobným obsahem.\n\n"
+        "**Jak skóre vzniká?**\n\n"
+        "Skóre podobnosti (0–1) vychází z porovnání tří obsahových částí sylabu: "
+        "zaměření předmětu, obsahu předmětu a výsledků učení. Výběr těchto "
+        "atributů vychází z dotazníkového šetření mezi garanty předmětů na VŠE a současně "
+        "odpovídá struktuře sylabů dostupných v InSIS. "
+        "Vedle celkového skóre nástroj zobrazuje také dílčí skóre pro jednotlivé "
+        "části sylabu. Pro účely porovnání jsou implementovány tři metody výpočtu "
+        "podobnosti: TF-IDF, SBERT a OpenAI embeddings.\n\n"
+        "**Jak interpretovat výsledky?**\n\n"
+        "Vyšší skóre znamená vyšší obsahovou podobnost mezi porovnávanými "
+        "předměty. Výsledek však představuje pouze orientační podklad pro další "
+        "posouzení. Při rozhodování o uznání předmětu mohou hrát roli i další "
+        "faktory, například počet kreditů, úroveň studia nebo individuální "
+        "posouzení garanta.\n\n"
+        "**Vybraná zjištění z dotazníkového šetření (N = 77):**\n\n"
+        "82 % respondentů uvedlo požadavek na shodný nebo přibližně shodný "
+        "počet kreditů (rozdíl nejvýše 1–2 ECTS). "
+        "46 % respondentů uvedlo, že rozdílná úroveň studia může představovat "
+        "důvod pro neuznání předmětu."
+    )
 
 vse_df, partner_df = load_data()
 
@@ -121,9 +165,10 @@ course_code_input = st.text_input(
 vse_row = None
 
 if course_code_input:
-    match = vse_df[
-        vse_df["course_code"] == course_code_input
-    ]
+    with st.spinner("Načítám předmět..."):
+        match = vse_df[
+            vse_df["course_code"] == course_code_input
+        ]
 
     if not match.empty:
         vse_row = match.iloc[0]
@@ -323,6 +368,45 @@ if search_button and vse_row is not None:
                         f"`{row['course_code']}`"
                     )
 
+                     # doplňující informace o předmětu s porovnáním vůči VŠE předmětu
+                    meta_parts = []
+
+                    partner_credits = pd.to_numeric(
+                        row.get("ects_credits"), errors="coerce"
+                    )
+                    vse_credits = pd.to_numeric(
+                        vse_row.get("ects_credits"), errors="coerce"
+                    ) if vse_row is not None else None
+
+                    if pd.notna(partner_credits):
+                        credits_str = f"{partner_credits:.0f} ECTS"
+                        if pd.notna(vse_credits):
+                            diff = partner_credits - vse_credits
+                            if diff == 0:
+                                credits_str += " (shoda s VŠE)"
+                            else:
+                                credits_str += f" (VŠE: {vse_credits:.0f}, rozdíl: {diff:+.0f})"
+                        meta_parts.append(credits_str)
+
+                    # porovnání úrovně studia
+                    partner_level = str(row.get("study_level", "")).strip().lower()
+                    vse_level = str(
+                        vse_row.get("study_level", "") if vse_row is not None else ""
+                    ).strip().lower()
+                    allowed_levels = STUDY_LEVEL_MAP.get(vse_level, [])
+
+                    if partner_level:
+                        if allowed_levels:
+                            level_match = "✓" if partner_level in allowed_levels else "✗"
+                            meta_parts.append(
+                                f"{level_match} {row.get('study_level', '')} (úroveň studia)"
+                            )
+                        else:
+                            meta_parts.append(row.get("study_level", ""))
+
+                    if meta_parts:
+                        st.caption("  ·  ".join(meta_parts))
+
                 with col_score:
                     st.metric(
                         "Skóre",
@@ -348,12 +432,15 @@ if search_button and vse_row is not None:
                             )
 
                 # zobrazení dostupnosti atributů a odkazu na sylabus
-                coverage_pct = int(row["coverage"] * 100)
+                available_attrs = sum(
+                    1 for attr in CONTENT_ATTRIBUTES
+                    if not pd.isna(row.get(f"{attr}_score"))
+                )
                 col_cov, col_link = st.columns([3, 1])
 
                 with col_cov:
                     st.caption(
-                        f"Dostupnost atributů: {coverage_pct} %"
+                        f"Dostupné atributy: {available_attrs}/3"
                     )
 
                 with col_link:
