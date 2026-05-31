@@ -1,6 +1,15 @@
 pandas
+numpy
 requests
 beautifulsoup4
 selenium
 webdriver-manager
 striprtf
+nltk
+scikit-learn
+scipy
+sentence-transformers
+openai
+python-dotenv
+streamlit
+torchvision

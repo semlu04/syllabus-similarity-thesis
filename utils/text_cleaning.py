@@ -1,6 +1,17 @@
 import re
 import pandas as pd
 
+import nltk
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+
+nltk.download("stopwords", quiet=True)
+nltk.download("wordnet", quiet=True)
+
+# nástroje pro předzpracování textu pro TF-IDF
+lemmatizer = WordNetLemmatizer()
+stop_words = set(stopwords.words("english"))
+
 # základní technické čištění textu
 def clean_base_text(value):
     if pd.isna(value):
@@ -57,3 +68,44 @@ def normalize_rtf_text(text):
     text = re.sub(r"\n{3,}", "\n\n", text)
 
     return text.strip()
+
+# kontrola, zda hodnota obsahuje použitelný text
+def has_text(value):
+    cleaned = clean_base_text(value)
+    return not pd.isna(cleaned)
+
+# minimální čištění textu pro výpočet podobnosti
+def minimal_clean_text(text):
+    if pd.isna(text):
+        return None
+
+    text = str(text)
+
+    # sjednocení vícenásobných mezer
+    text = re.sub(r"\s+", " ", text).strip()
+
+    if text == "":
+        return None
+
+    return text
+
+# předzpracování textu pro TF-IDF
+def preprocess_for_tfidf(text):
+    if not has_text(text):
+        return ""
+
+    text = str(text).lower()
+
+    # odstranění interpunkce
+    text = re.sub(r"[^\w\s]", " ", text)
+
+    # tokenizace textu
+    tokens = text.split()
+
+    # odstranění stop slov
+    tokens = [token for token in tokens if token not in stop_words]
+
+    # lemmatizace tokenů
+    tokens = [lemmatizer.lemmatize(token) for token in tokens]
+
+    return " ".join(tokens)
