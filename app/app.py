@@ -65,6 +65,26 @@ def load_data():
 
     return vse_df, partner_df
 
+# ověření, zda sylabus obsahuje alespoň jeden atribut
+
+# potřebný pro výpočet podobnosti
+def validate_uploaded_syllabus(parsed: dict) -> tuple[bool, str]:
+    has_content_attribute = any(
+        has_text(parsed.get(attr))
+        for attr in CONTENT_ATTRIBUTES
+    )
+
+    if not has_content_attribute:
+        return (
+            False,
+            "Nahraný soubor nelze použít. Sylabus neobsahuje žádný z obsahových "
+            "atributů potřebných pro výpočet podobnosti: zaměření předmětu, "
+            "obsah předmětu nebo výsledky učení. Zkontrolujte, že nahráváte "
+            "anglický RTF sylabus exportovaný z InSIS."
+        )
+
+    return True, ""
+
 
 # -------------------------------------------------------------------
 # Embedding funkce
@@ -220,30 +240,39 @@ if course_code_input:
                 try:
                     file_bytes = uploaded_file.read()
                     parsed = parse_syllabus_from_bytes(file_bytes)
-                    vse_row = pd.Series(parsed)
+                    
+                    # kontrola, zda lze nahraný sylabus použít pro výpočet podobnosti
+                    is_valid, error_message = validate_uploaded_syllabus(parsed)
 
-                    st.success(
-                        f"Sylabus úspěšně načten: "
-                        f"**{parsed.get('course_code', '')} — "
-                        f"{parsed.get('course_title', '')}**"
-                    )
+                    if not is_valid:
+                        st.error(error_message)
+                        vse_row = None
 
-                    # zobrazení dostupnosti obsahových atributů
-                    coverage_info = []
+                    else:
+                        vse_row = pd.Series(parsed)
 
-                    for attr in CONTENT_ATTRIBUTES:
-                        value = vse_row.get(attr)
+                        st.success(
+                            f"Sylabus úspěšně načten: "
+                            f"**{parsed.get('course_code', '')} — "
+                            f"{parsed.get('course_title', '')}**"
+                        )
 
-                        if has_text(value):
-                            coverage_info.append(
-                                f"✓ {ATTRIBUTE_LABELS[attr]}"
-                            )
-                        else:
-                            coverage_info.append(
-                                f"✗ {ATTRIBUTE_LABELS[attr]}"
-                            )
+                        # zobrazení dostupnosti obsahových atributů
+                        coverage_info = []
 
-                    st.caption("  ·  ".join(coverage_info))
+                        for attr in CONTENT_ATTRIBUTES:
+                            value = vse_row.get(attr)
+
+                            if has_text(value):
+                                coverage_info.append(
+                                    f"✓ {ATTRIBUTE_LABELS[attr]}"
+                                )
+                            else:
+                                coverage_info.append(
+                                    f"✗ {ATTRIBUTE_LABELS[attr]}"
+                                )
+
+                        st.caption("  ·  ".join(coverage_info))
 
                 except Exception as e:
                     st.error(f"Chyba při zpracování souboru: {e}")
